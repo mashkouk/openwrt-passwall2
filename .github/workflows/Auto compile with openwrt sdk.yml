@@ -20,7 +20,7 @@ env:
 jobs:
   job_check:
     name: Check Version
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     outputs:
       passwall2_version: ${{ steps.check_version.outputs.latest_version }}
       has_update: ${{ steps.check_version.outputs.has_update }}
@@ -59,7 +59,7 @@ jobs:
 
       - name: Generate new tag & release
         if: steps.check_version.outputs.has_update == 'true'
-        uses: softprops/action-gh-release@master
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -73,7 +73,7 @@ jobs:
     name: Build passwall2 [Luci ${{ matrix.luci_ver }}]
     needs: job_check
     if: needs.job_check.outputs.has_update == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -88,7 +88,6 @@ jobs:
     steps:
       - name: Install packages
         run: |
-          docker rmi `docker images -q`
           sudo -E rm -rf /usr/share/dotnet /etc/mysql /etc/php /etc/apt/sources.list.d /usr/local/lib/android
           echo "Install packages"
           sudo -E apt-get -qq update
@@ -142,7 +141,7 @@ jobs:
           echo "CONFIG_PACKAGE_luci-app-passwall2=m" >> .config
           make defconfig
           echo "make package/luci-app-passwall2/{clean,compile} -j1"
-          make package/luci-app-passwall2/{clean,compile} -j1
+          make package/luci-app-passwall2/{clean,compile} -j1 V=s
           mv bin/packages/x86_64/passwall2/ ../
           make clean
           rm .config .config.old
@@ -154,7 +153,7 @@ jobs:
           echo "FIRMWARE=$PWD" >> $GITHUB_ENV
 
       - name: Upload passwall2 ipks to release
-        uses: softprops/action-gh-release@master
+        uses: softprops/action-gh-release@v2
         if: steps.compile.outputs.status == 'success'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -166,7 +165,7 @@ jobs:
   job_auto_compile:
     if: ${{ needs.job_check.outputs.has_update == 'true' && needs.job_check.outputs.prerelease == 'false' }}
     needs: job_check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     name: build (${{ matrix.platform }})
     strategy:
       fail-fast: false
@@ -183,6 +182,9 @@ jobs:
 
           - platform: aarch64_cortex-a72
             url_sdk: https://downloads.openwrt.org/releases/23.05.5/targets/mvebu/cortexa72/openwrt-sdk-23.05.5-mvebu-cortexa72_gcc-12.3.0_musl.Linux-x86_64.tar.xz
+
+          - platform: arm_cortex-a5_vfpv4
+            url_sdk: https://downloads.openwrt.org/releases/23.05.5/targets/at91/sama5/openwrt-sdk-23.05.5-at91-sama5_gcc-12.3.0_musl_eabi.Linux-x86_64.tar.xz
 
           - platform: arm_cortex-a7
             url_sdk: https://downloads.openwrt.org/releases/23.05.5/targets/mediatek/mt7629/openwrt-sdk-23.05.5-mediatek-mt7629_gcc-12.3.0_musl_eabi.Linux-x86_64.tar.xz
@@ -226,7 +228,6 @@ jobs:
     steps:
       - name: Initialization ${{ matrix.platform }} compile environment
         run: |
-          docker rmi `docker images -q`
           sudo -E rm -rf /usr/share/dotnet /etc/mysql /etc/php /etc/apt/sources.list.d /usr/local/lib/android
           echo "install packages!!!!!!"
           sudo -E apt-get -qq update
@@ -283,7 +284,6 @@ jobs:
           echo "CONFIG_PACKAGE_luci-app-passwall2_INCLUDE_Simple_Obfs=y" >> .config
           echo "CONFIG_PACKAGE_luci-app-passwall2_INCLUDE_SingBox=y" >> .config
           echo "CONFIG_PACKAGE_luci-app-passwall2_INCLUDE_tuic_client=y" >> .config
-          echo "CONFIG_PACKAGE_luci-app-passwall2_INCLUDE_V2ray_Geoview=y" >> .config
           echo "CONFIG_PACKAGE_luci-app-passwall2_INCLUDE_V2ray_Plugin=y" >> .config
 
           make defconfig
@@ -299,19 +299,20 @@ jobs:
         id: compile
         run: |
           cd sdk
-          make package/feeds/passwall_packages/tcping/compile -j1 2>/dev/null
-          make package/feeds/passwall_packages/xray-core/compile -j1 2>/dev/null
-          make package/feeds/passwall_packages/v2ray-geodata/compile -j1 2>/dev/null
+          make package/feeds/passwall_packages/chinadns-ng/compile -j1 V=s 2>/dev/null
+          make package/feeds/passwall_packages/geoview/compile -j1 V=s 2>/dev/null
+          make package/feeds/passwall_packages/tcping/compile -j1 V=s 2>/dev/null
+          make package/feeds/passwall_packages/xray-core/compile -j1 V=s 2>/dev/null
+          make package/feeds/passwall_packages/v2ray-geodata/compile -j1 V=s 2>/dev/null
 
-          make package/feeds/passwall_packages/hysteria/compile -j1 2>/dev/null
-          make package/feeds/passwall_packages/naiveproxy/compile -j1 2>/dev/null
-          make package/feeds/passwall_packages/shadowsocks-rust/compile -j1 2>/dev/null
-          make package/feeds/passwall_packages/shadowsocksr-libev/compile -j1 2>/dev/null
-          make package/feeds/passwall_packages/simple-obfs/compile -j1 2>/dev/null
-          make package/feeds/passwall_packages/sing-box/compile -j1 2>/dev/null
-          make package/feeds/passwall_packages/tuic-client/compile -j1 2>/dev/null
-          make package/feeds/passwall_packages/v2ray-geoview/compile -j1 2>/dev/null
-          make package/feeds/passwall_packages/v2ray-plugin/compile -j1 2>/dev/null
+          make package/feeds/passwall_packages/hysteria/compile -j1 V=s 2>/dev/null
+          make package/feeds/passwall_packages/naiveproxy/compile -j1 V=s 2>/dev/null
+          make package/feeds/passwall_packages/shadowsocks-rust/compile -j1 V=s 2>/dev/null
+          make package/feeds/passwall_packages/shadowsocksr-libev/compile -j1 V=s 2>/dev/null
+          make package/feeds/passwall_packages/simple-obfs/compile -j1 V=s 2>/dev/null
+          make package/feeds/passwall_packages/sing-box/compile -j1 V=s 2>/dev/null
+          make package/feeds/passwall_packages/tuic-client/compile -j1 V=s 2>/dev/null
+          make package/feeds/passwall_packages/v2ray-plugin/compile -j1 V=s 2>/dev/null
 
           echo "status=success" >> $GITHUB_OUTPUT
 
@@ -341,7 +342,7 @@ jobs:
           echo "**package name**|**package version**" >> release.txt
           echo "-|-" >> release.txt
 
-          pkgs=$(ls feeds/passwall_packages -I v2ray-geodata | grep -E "tcping|xray-core|hysteria|naiveproxy|shadowsocks-rust|shadowsocksr-libev|simple-obfs|sing-box|tuic-client|v2ray-geoview|v2ray-plugin")
+          pkgs=$(ls feeds/passwall_packages -I v2ray-geodata | grep -E "chinadns-ng|geoview|tcping|xray-core|hysteria|naiveproxy|shadowsocks-rust|shadowsocksr-libev|simple-obfs|sing-box|tuic-client|v2ray-plugin")
           for pkg in $pkgs; do
             version=$(awk -F ':=' '/PKG_VERSION:=/{print $2}' feeds/passwall_packages/$pkg/Makefile | sed 's/\r//g')
             [ -z "${version}" ] && version=$(awk -F ':=' '/PKG_SOURCE_DATE:=/{print $2}' feeds/passwall_packages/$pkg/Makefile | sed 's/\r//g')
@@ -354,7 +355,7 @@ jobs:
           echo "status=success" >> $GITHUB_OUTPUT
 
       - name: Upload firmware to release
-        uses: softprops/action-gh-release@master
+        uses: softprops/action-gh-release@v2
         if: steps.info.outputs.status == 'success'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
